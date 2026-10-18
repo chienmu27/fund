@@ -16,9 +16,9 @@
     <header class="flex flex-col md:flex-row md:items-center justify-between mb-8 pb-4 border-b border-slate-200">
       <div>
         <h1 class="text-3xl font-bold text-slate-800 flex items-center gap-2">
-          <i class="ph ph-wallet text-indigo-600"></i> 活動基金管理系統
+          <i class="ph ph-wallet text-indigo-600"></i> 學務處活動基金
         </h1>
-        <p class="text-sm text-slate-500 mt-1">即時同步 Google 試算表，輕鬆掌握每月收支與結餘</p>
+        <p class="text-sm text-slate-500 mt-1"></p>
       </div>
       <div class="mt-4 md:mt-0 flex gap-2">
         <button id="refreshBtn" class="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50 transition font-medium text-sm">
@@ -51,7 +51,7 @@
             <option value="ALL">全部歷史紀錄</option>
           </select>
         </div>
-        <div class="mt-2 text-xs text-indigo-600 font-medium" id="selectedMonthSummary">請選擇月份以檢視該月結餘</div>
+        <div class="mt-2 text-xs text-indigo-600 font-medium" id="selectedMonthSummary">選擇月份以檢視該月結餘</div>
       </div>
     </section>
 
@@ -70,7 +70,7 @@
 
           <!-- 姓名 (自設定 A2:A 載入下拉選單) -->
           <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">姓名 (繳款人 / 經手人)</label>
+            <label class="block text-xs font-medium text-slate-600 mb-1">姓名</label>
             <select id="formName" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
               <option value="" disabled selected>載入中...</option>
             </select>
@@ -87,8 +87,8 @@
 
           <!-- 收入欄位 (使用 datalist: 下拉可選，亦可手動輸入) -->
           <div id="incomeFields">
-            <label class="block text-xs font-medium text-slate-600 mb-1">收入品項 (可自填或下拉選擇)</label>
-            <input type="text" list="incomeList" id="formIncomeItem" placeholder="選擇或自行填寫品項" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+            <label class="block text-xs font-medium text-slate-600 mb-1">收入品項</label>
+            <input type="text" list="incomeList" id="formIncomeItem" placeholder="選擇填寫品項" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
             <datalist id="incomeList"></datalist>
 
             <label class="block text-xs font-medium text-slate-600 mt-3 mb-1">收入金額</label>
@@ -100,8 +100,8 @@
 
           <!-- 支出欄位 (使用 datalist: 下拉可選，亦可手動輸入) -->
           <div id="expenseFields" class="hidden">
-            <label class="block text-xs font-medium text-slate-600 mb-1">支出品項 (可自填或下拉選擇)</label>
-            <input type="text" list="expenseList" id="formExpenseItem" placeholder="選擇或自行填寫品項" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none">
+            <label class="block text-xs font-medium text-slate-600 mb-1">支出品項</label>
+            <input type="text" list="expenseList" id="formExpenseItem" placeholder="選擇填寫品項" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none">
             <datalist id="expenseList"></datalist>
 
             <label class="block text-xs font-medium text-slate-600 mt-3 mb-1">支出金額</label>
@@ -113,17 +113,17 @@
 
           <!-- 備註 -->
           <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">備註 (選填)</label>
+            <label class="block text-xs font-medium text-slate-600 mb-1">備註</label>
             <textarea id="formNote" rows="2" placeholder="備註說明事項..." class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
           </div>
 
           <!-- 🔒 驗證碼輸入欄位 (比對設定表 D2) -->
           <div class="pt-2 border-t border-slate-100">
             <label class="block text-xs font-semibold text-indigo-700 mb-1 flex items-center gap-1">
-              <i class="ph ph-shield-check text-base"></i> 操作驗證碼 (必填)
+              <i class="ph ph-shield-check text-base"></i> 操作驗證碼
             </label>
             <input type="password" id="formAuthCode" required placeholder="請輸入安全驗證碼" class="w-full px-3 py-2 text-sm border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-indigo-50/30">
-            <p class="text-[11px] text-slate-400 mt-1">需與試算表「設定」工作表 D2 設定一致方可寫入</p>
+            <p class="text-[11px] text-slate-400 mt-1"></p>
           </div>
 
           <!-- 儲存按鈕 -->
