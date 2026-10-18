@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>活動基金管理系統</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons CDN -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+  <div class="max-w-6xl mx-auto px-4 py-8">
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row md:items-center justify-between mb-8 pb-4 border-b border-slate-200">
+      <div>
+        <h1 class="text-3xl font-bold text-slate-800 flex items-center gap-2">
+          <i class="ph ph-wallet text-indigo-600"></i> 活動基金管理系統
+        </h1>
+        <p class="text-sm text-slate-500 mt-1">即時同步 Google 試算表，輕鬆掌握每月收支與結餘</p>
+      </div>
+      <div class="mt-4 md:mt-0 flex gap-2">
+        <button id="refreshBtn" class="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50 transition font-medium text-sm">
+          <i class="ph ph-arrows-clockwise text-slate-600"></i> 重新載入
+        </button>
+      </div>
+    </header>
+
+    <!-- 總結餘 & 當月摘要 Dashboard -->
+    <section class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80">
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">當前總結餘</span>
+        <div class="text-2xl font-bold mt-2" id="totalBalance">NT$ 0</div>
+        <p class="text-xs text-slate-400 mt-1">累計淨資產</p>
+      </div>
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80">
+        <span class="text-xs font-semibold uppercase tracking-wider text-emerald-500">歷史總收入</span>
+        <div class="text-2xl font-bold mt-2 text-emerald-600" id="totalIncome">NT$ 0</div>
+        <p class="text-xs text-slate-400 mt-1">全期入帳總額</p>
+      </div>
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80">
+        <span class="text-xs font-semibold uppercase tracking-wider text-rose-500">歷史總支出</span>
+        <div class="text-2xl font-bold mt-2 text-rose-600" id="totalExpense">NT$ 0</div>
+        <p class="text-xs text-slate-400 mt-1">全期開銷總額</p>
+      </div>
+      <div class="bg-indigo-50 p-5 rounded-2xl border border-indigo-100 flex flex-col justify-between">
+        <div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-indigo-700">月份統計過濾</span>
+          <select id="monthFilter" class="w-full mt-2 bg-white border border-indigo-200 text-sm rounded-lg p-2 font-medium focus:ring-2 focus:ring-indigo-400 outline-none">
+            <option value="ALL">全部歷史紀錄</option>
+          </select>
+        </div>
+        <div class="mt-2 text-xs text-indigo-600 font-medium" id="selectedMonthSummary">請選擇月份以檢視該月結餘</div>
+      </div>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- 記帳表單 -->
+      <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 h-fit">
+        <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+          <i class="ph ph-plus-circle text-indigo-600 text-xl"></i> 新增收支記錄
+        </h2>
+        <form id="recordForm" class="space-y-4">
+          <!-- 日期 -->
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">記帳日期</label>
+            <input type="date" id="formDate" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+          </div>
+
+          <!-- 姓名 (自設定 A2:A 載入下拉選單) -->
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">姓名 (繳款人 / 經手人)</label>
+            <select id="formName" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="" disabled selected>載入中...</option>
+            </select>
+          </div>
+
+          <!-- 記帳類型開關 -->
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">類型選擇</label>
+            <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-lg">
+              <button type="button" id="btnTypeIncome" class="py-1.5 text-xs font-semibold rounded-md bg-white text-emerald-600 shadow-sm transition">收入 (+)</button>
+              <button type="button" id="btnTypeExpense" class="py-1.5 text-xs font-semibold rounded-md text-slate-600 hover:text-rose-600 transition">支出 (-)</button>
+            </div>
+          </div>
+
+          <!-- 收入欄位 (使用 datalist: 下拉可選，亦可手動輸入) -->
+          <div id="incomeFields">
+            <label class="block text-xs font-medium text-slate-600 mb-1">收入品項 (可自填或下拉選擇)</label>
+            <input type="text" list="incomeList" id="formIncomeItem" placeholder="選擇或自行填寫品項" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+            <datalist id="incomeList"></datalist>
+
+            <label class="block text-xs font-medium text-slate-600 mt-3 mb-1">收入金額</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">NT$</span>
+              <input type="number" id="formIncomeAmount" min="0" placeholder="0" class="w-full pl-10 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+            </div>
+          </div>
+
+          <!-- 支出欄位 (使用 datalist: 下拉可選，亦可手動輸入) -->
+          <div id="expenseFields" class="hidden">
+            <label class="block text-xs font-medium text-slate-600 mb-1">支出品項 (可自填或下拉選擇)</label>
+            <input type="text" list="expenseList" id="formExpenseItem" placeholder="選擇或自行填寫品項" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none">
+            <datalist id="expenseList"></datalist>
+
+            <label class="block text-xs font-medium text-slate-600 mt-3 mb-1">支出金額</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">NT$</span>
+              <input type="number" id="formExpenseAmount" min="0" placeholder="0" class="w-full pl-10 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none">
+            </div>
+          </div>
+
+          <!-- 備註 -->
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">備註 (選填)</label>
+            <textarea id="formNote" rows="2" placeholder="備註說明事項..." class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
+          </div>
+
+          <button type="submit" id="submitBtn" class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-lg shadow-sm transition flex items-center justify-center gap-2">
+            <i class="ph ph-paper-plane-tilt"></i> 儲存並同步至試算表
+          </button>
+        </form>
+      </section>
+
+      <!-- 收支明細清單 -->
+      <section class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i class="ph ph-receipt text-indigo-600 text-xl"></i> 收支紀錄明細
+          </h2>
+          <span id="recordCount" class="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">共 0 筆</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="border-b border-slate-200 text-slate-400 font-medium text-xs">
+                <th class="py-3 px-2">日期</th>
+                <th class="py-3 px-2">姓名</th>
+                <th class="py-3 px-2">品項</th>
+                <th class="py-3 px-2 text-right">金額</th>
+                <th class="py-3 px-2">備註</th>
+              </tr>
+            </thead>
+            <tbody id="recordTableBody" class="divide-y divide-slate-100 text-slate-700">
+              <tr>
+                <td colspan="5" class="py-8 text-center text-slate-400">
+                  <div class="flex flex-col items-center gap-2">
+                    <i class="ph ph-spinner-gap animate-spin text-2xl text-indigo-500"></i>
+                    <span>讀取資料中...</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    // ⚠️ 請務必將以下 URL 替換為 Apps Script 發布後的「網頁應用程式網址」
+    const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwmAHRLBRqNAI2mkANaJ2Sm7lcNnBwZSfgIjFg6nS1iPcm57WG7pgFZT0ptD1_bCNMI/exec';
+
+    // 系統狀態
+    let appState = {
+      records: [],
+      summary: {},
+      currentType: 'income' // 'income' 或 'expense'
+    };
+
+    // 初始化設定
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('formDate').valueAsDate = new Date();
+      fetchData();
+      bindEvents();
+    });
+
+    function bindEvents() {
+      // 收入/支出切換
+      const btnIncome = document.getElementById('btnTypeIncome');
+      const btnExpense = document.getElementById('btnTypeExpense');
+      const incomeFields = document.getElementById('incomeFields');
+      const expenseFields = document.getElementById('expenseFields');
+
+      btnIncome.addEventListener('click', () => {
+        appState.currentType = 'income';
+        btnIncome.className = 'py-1.5 text-xs font-semibold rounded-md bg-white text-emerald-600 shadow-sm transition';
+        btnExpense.className = 'py-1.5 text-xs font-semibold rounded-md text-slate-600 hover:text-rose-600 transition';
+        incomeFields.classList.remove('hidden');
+        expenseFields.classList.add('hidden');
+      });
+
+      btnExpense.addEventListener('click', () => {
+        appState.currentType = 'expense';
+        btnExpense.className = 'py-1.5 text-xs font-semibold rounded-md bg-white text-rose-600 shadow-sm transition';
+        btnIncome.className = 'py-1.5 text-xs font-semibold rounded-md text-slate-600 hover:text-emerald-600 transition';
+        expenseFields.classList.remove('hidden');
+        incomeFields.classList.add('hidden');
+      });
+
+      // 重新載入按鈕
+      document.getElementById('refreshBtn').addEventListener('click', fetchData);
+
+      // 月份篩選變更
+      document.getElementById('monthFilter').addEventListener('change', (e) => {
+        filterRecords(e.target.value);
+      });
+
+      // 表單提交
+      document.getElementById('recordForm').addEventListener('submit', handleFormSubmit);
+    }
+
+    // 抓取後端資料
+    async function fetchData() {
+      if (GAS_API_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
+        alert('請先在 index.html 中設定您的 GAS_API_URL 部署網址！');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const res = await fetch(`${GAS_API_URL}?action=getAll`);
+        const data = await res.json();
+
+        if (data.status === 'success') {
+          appState.records = data.records;
+          appState.summary = data.summary;
+
+          populateDropdowns(data.settings);
+          renderSummary();
+          populateMonthFilter(data.summary.monthly);
+          filterRecords(document.getElementById('monthFilter').value);
+        } else {
+          alert('取得資料失敗：' + data.message);
+        }
+      } catch (err) {
+        console.error(err);
+        alert('連線失敗，請確認 Apps Script 權限已設為「所有人」。');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // 填入下拉選單 (A2:A, B2:B, C2:C)
+    function populateDropdowns(settings) {
+      // 姓名下拉選單
+      const nameSelect = document.getElementById('formName');
+      nameSelect.innerHTML = '<option value="" disabled selected>請選擇姓名</option>';
+      settings.members.forEach(member => {
+        nameSelect.innerHTML += `<option value="${member}">${member}</option>`;
+      });
+
+      // 收入品項 Datalist (下拉 + 可自行填寫)
+      const incomeDatalist = document.getElementById('incomeList');
+      incomeDatalist.innerHTML = '';
+      settings.incomeCategories.forEach(item => {
+        incomeDatalist.innerHTML += `<option value="${item}"></option>`;
+      });
+
+      // 支出品項 Datalist (下拉 + 可自行填寫)
+      const expenseDatalist = document.getElementById('expenseList');
+      expenseDatalist.innerHTML = '';
+      settings.expenseCategories.forEach(item => {
+        expenseDatalist.innerHTML += `<option value="${item}"></option>`;
+      });
+    }
+
+    // 渲染總覽數據
+    function renderSummary() {
+      const summary = appState.summary;
+      document.getElementById('totalBalance').textContent = `NT$ ${formatNumber(summary.balance || 0)}`;
+      document.getElementById('totalIncome').textContent = `NT$ ${formatNumber(summary.totalIncome || 0)}`;
+      document.getElementById('totalExpense').textContent = `NT$ ${formatNumber(summary.totalExpense || 0)}`;
+    }
+
+    // 填入月份選單
+    function populateMonthFilter(monthly) {
+      const filter = document.getElementById('monthFilter');
+      const currentVal = filter.value;
+      filter.innerHTML = '<option value="ALL">全部歷史紀錄</option>';
+
+      const months = Object.keys(monthly || {}).sort().reverse();
+      months.forEach(m => {
+        if (m !== '未分類') {
+          filter.innerHTML += `<option value="${m}">${m} 月份</option>`;
+        }
+      });
+      filter.value = currentVal;
+    }
+
+    // 篩選明細列表與更新月份摘要
+    function filterRecords(selectedMonth) {
+      const records = appState.records;
+      const tbody = document.getElementById('recordTableBody');
+      const summaryLabel = document.getElementById('selectedMonthSummary');
+      tbody.innerHTML = '';
+
+      let filtered = records;
+      if (selectedMonth !== 'ALL') {
+        filtered = records.filter(r => r.date.startsWith(selectedMonth));
+        const monthData = appState.summary.monthly[selectedMonth] || { income: 0, expense: 0, balance: 0 };
+        summaryLabel.innerHTML = `
+          ${selectedMonth} 統計：
+          收入 <span class="font-bold text-emerald-600">+${formatNumber(monthData.income)}</span> / 
+          支出 <span class="font-bold text-rose-600">-${formatNumber(monthData.expense)}</span> / 
+          結餘 <span class="font-bold text-indigo-700">${formatNumber(monthData.balance)}</span>
+        `;
+      } else {
+        summaryLabel.textContent = '檢視所有歷史明細，可使用下拉選單篩選月份';
+      }
+
+      document.getElementById('recordCount').textContent = `共 ${filtered.length} 筆`;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400">查無收支記錄</td></tr>`;
+        return;
+      }
+
+      filtered.forEach(row => {
+        const isIncome = row.incomeAmount > 0;
+        const item = isIncome ? row.incomeItem : row.expenseItem;
+        const amount = isIncome ? row.incomeAmount : row.expenseAmount;
+        const amountClass = isIncome ? 'text-emerald-600 font-semibold' : 'text-rose-600 font-semibold';
+        const sign = isIncome ? '+' : '-';
+
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 px-2 text-slate-500 font-mono text-xs">${row.date}</td>
+            <td class="py-3 px-2 font-medium">${row.name}</td>
+            <td class="py-3 px-2">
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${isIncome ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}">
+                ${item || (isIncome ? '收入' : '支出')}
+              </span>
+            </td>
+            <td class="py-3 px-2 text-right ${amountClass}">${sign}NT$ ${formatNumber(amount)}</td>
+            <td class="py-3 px-2 text-slate-400 text-xs truncate max-w-[150px]">${row.note || '-'}</td>
+          </tr>
+        `;
+      });
+    }
+
+    // 表單提交處理
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      const submitBtn = document.getElementById('submitBtn');
+
+      const date = document.getElementById('formDate').value;
+      const name = document.getElementById('formName').value;
+      const note = document.getElementById('formNote').value;
+
+      let incomeItem = '', incomeAmount = 0;
+      let expenseItem = '', expenseAmount = 0;
+
+      if (appState.currentType === 'income') {
+        incomeItem = document.getElementById('formIncomeItem').value;
+        incomeAmount = parseFloat(document.getElementById('formIncomeAmount').value) || 0;
+        if (incomeAmount <= 0) {
+          alert('請輸入大於 0 的收入金額');
+          return;
+        }
+      } else {
+        expenseItem = document.getElementById('formExpenseItem').value;
+        expenseAmount = parseFloat(document.getElementById('formExpenseAmount').value) || 0;
+        if (expenseAmount <= 0) {
+          alert('請輸入大於 0 的支出金額');
+          return;
+        }
+      }
+
+      const payload = {
+        date,
+        name,
+        incomeItem,
+        incomeAmount,
+        expenseItem,
+        expenseAmount,
+        note
+      };
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i class="ph ph-spinner-gap animate-spin"></i> 資料傳送中...`;
+
+      try {
+        await fetch(GAS_API_URL, {
+          method: 'POST',
+          mode: 'no-cors', // 解決 GAS 重新導向 CORS 限制
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        alert('記帳成功！');
+        // 重置金額與品項欄位
+        document.getElementById('formIncomeItem').value = '';
+        document.getElementById('formIncomeAmount').value = '';
+        document.getElementById('formExpenseItem').value = '';
+        document.getElementById('formExpenseAmount').value = '';
+        document.getElementById('formNote').value = '';
+
+        // 重新整理資料
+        setTimeout(fetchData, 1200);
+
+      } catch (err) {
+        console.error(err);
+        alert('儲存失敗，請重試！');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<i class="ph ph-paper-plane-tilt"></i> 儲存並同步至試算表`;
+      }
+    }
+
+    function formatNumber(num) {
+      return Number(num).toLocaleString('zh-TW');
+    }
+
+    function setLoading(isLoading) {
+      const refreshBtn = document.getElementById('refreshBtn');
+      if (isLoading) {
+        refreshBtn.innerHTML = `<i class="ph ph-spinner-gap animate-spin"></i> 載入中`;
+      } else {
+        refreshBtn.innerHTML = `<i class="ph ph-arrows-clockwise text-slate-600"></i> 重新載入`;
+      }
+    }
+  </script>
+</body>
+</html>
