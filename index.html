@@ -117,6 +117,16 @@
             <textarea id="formNote" rows="2" placeholder="備註說明事項..." class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
           </div>
 
+          <!-- 🔒 驗證碼輸入欄位 (比對設定表 D2) -->
+          <div class="pt-2 border-t border-slate-100">
+            <label class="block text-xs font-semibold text-indigo-700 mb-1 flex items-center gap-1">
+              <i class="ph ph-shield-check text-base"></i> 操作驗證碼 (必填)
+            </label>
+            <input type="password" id="formAuthCode" required placeholder="請輸入安全驗證碼" class="w-full px-3 py-2 text-sm border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-indigo-50/30">
+            <p class="text-[11px] text-slate-400 mt-1">需與試算表「設定」工作表 D2 設定一致方可寫入</p>
+          </div>
+
+          <!-- 儲存按鈕 -->
           <button type="submit" id="submitBtn" class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-lg shadow-sm transition flex items-center justify-center gap-2">
             <i class="ph ph-paper-plane-tilt"></i> 儲存並同步至試算表
           </button>
@@ -160,17 +170,15 @@
   </div>
 
   <script>
-    // ⚠️ 請務必將以下 URL 替換為 Apps Script 發布後的「網頁應用程式網址」
+    // ⚠️ 請填入您的 Google Apps Script 部署網址
     const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwmAHRLBRqNAI2mkANaJ2Sm7lcNnBwZSfgIjFg6nS1iPcm57WG7pgFZT0ptD1_bCNMI/exec';
 
-    // 系統狀態
     let appState = {
       records: [],
       summary: {},
-      currentType: 'income' // 'income' 或 'expense'
+      currentType: 'income'
     };
 
-    // 初始化設定
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('formDate').valueAsDate = new Date();
       fetchData();
@@ -178,7 +186,6 @@
     });
 
     function bindEvents() {
-      // 收入/支出切換
       const btnIncome = document.getElementById('btnTypeIncome');
       const btnExpense = document.getElementById('btnTypeExpense');
       const incomeFields = document.getElementById('incomeFields');
@@ -200,19 +207,13 @@
         incomeFields.classList.add('hidden');
       });
 
-      // 重新載入按鈕
       document.getElementById('refreshBtn').addEventListener('click', fetchData);
-
-      // 月份篩選變更
       document.getElementById('monthFilter').addEventListener('change', (e) => {
         filterRecords(e.target.value);
       });
-
-      // 表單提交
       document.getElementById('recordForm').addEventListener('submit', handleFormSubmit);
     }
 
-    // 抓取後端資料
     async function fetchData() {
       if (GAS_API_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
         alert('請先在 index.html 中設定您的 GAS_API_URL 部署網址！');
@@ -243,23 +244,19 @@
       }
     }
 
-    // 填入下拉選單 (A2:A, B2:B, C2:C)
     function populateDropdowns(settings) {
-      // 姓名下拉選單
       const nameSelect = document.getElementById('formName');
       nameSelect.innerHTML = '<option value="" disabled selected>請選擇姓名</option>';
       settings.members.forEach(member => {
         nameSelect.innerHTML += `<option value="${member}">${member}</option>`;
       });
 
-      // 收入品項 Datalist (下拉 + 可自行填寫)
       const incomeDatalist = document.getElementById('incomeList');
       incomeDatalist.innerHTML = '';
       settings.incomeCategories.forEach(item => {
         incomeDatalist.innerHTML += `<option value="${item}"></option>`;
       });
 
-      // 支出品項 Datalist (下拉 + 可自行填寫)
       const expenseDatalist = document.getElementById('expenseList');
       expenseDatalist.innerHTML = '';
       settings.expenseCategories.forEach(item => {
@@ -267,7 +264,6 @@
       });
     }
 
-    // 渲染總覽數據
     function renderSummary() {
       const summary = appState.summary;
       document.getElementById('totalBalance').textContent = `NT$ ${formatNumber(summary.balance || 0)}`;
@@ -275,7 +271,6 @@
       document.getElementById('totalExpense').textContent = `NT$ ${formatNumber(summary.totalExpense || 0)}`;
     }
 
-    // 填入月份選單
     function populateMonthFilter(monthly) {
       const filter = document.getElementById('monthFilter');
       const currentVal = filter.value;
@@ -290,7 +285,6 @@
       filter.value = currentVal;
     }
 
-    // 篩選明細列表與更新月份摘要
     function filterRecords(selectedMonth) {
       const records = appState.records;
       const tbody = document.getElementById('recordTableBody');
@@ -341,7 +335,6 @@
       });
     }
 
-    // 表單提交處理
     async function handleFormSubmit(e) {
       e.preventDefault();
       const submitBtn = document.getElementById('submitBtn');
@@ -349,6 +342,12 @@
       const date = document.getElementById('formDate').value;
       const name = document.getElementById('formName').value;
       const note = document.getElementById('formNote').value;
+      const authCode = document.getElementById('formAuthCode').value.trim();
+
+      if (!authCode) {
+        alert('請輸入操作驗證碼！');
+        return;
+      }
 
       let incomeItem = '', incomeAmount = 0;
       let expenseItem = '', expenseAmount = 0;
@@ -376,34 +375,41 @@
         incomeAmount,
         expenseItem,
         expenseAmount,
-        note
+        note,
+        authCode // 傳送驗證碼給後端比對
       };
 
       submitBtn.disabled = true;
-      submitBtn.innerHTML = `<i class="ph ph-spinner-gap animate-spin"></i> 資料傳送中...`;
+      submitBtn.innerHTML = `<i class="ph ph-spinner-gap animate-spin"></i> 驗證並儲存中...`;
 
       try {
-        await fetch(GAS_API_URL, {
+        const response = await fetch(GAS_API_URL, {
           method: 'POST',
-          mode: 'no-cors', // 解決 GAS 重新導向 CORS 限制
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
 
-        alert('記帳成功！');
-        // 重置金額與品項欄位
-        document.getElementById('formIncomeItem').value = '';
-        document.getElementById('formIncomeAmount').value = '';
-        document.getElementById('formExpenseItem').value = '';
-        document.getElementById('formExpenseAmount').value = '';
-        document.getElementById('formNote').value = '';
+        const result = await response.json();
 
-        // 重新整理資料
-        setTimeout(fetchData, 1200);
+        if (result.status === 'success') {
+          alert(result.message || '記帳成功！');
+          // 清空品項、金額與備註欄位
+          document.getElementById('formIncomeItem').value = '';
+          document.getElementById('formIncomeAmount').value = '';
+          document.getElementById('formExpenseItem').value = '';
+          document.getElementById('formExpenseAmount').value = '';
+          document.getElementById('formNote').value = '';
+          document.getElementById('formAuthCode').value = '';
+
+          // 重新抓取最新資料
+          fetchData();
+        } else {
+          // 驗證失敗或其他錯誤
+          alert('【驗證失敗】' + result.message);
+        }
 
       } catch (err) {
         console.error(err);
-        alert('儲存失敗，請重試！');
+        alert('連線失敗，請檢查網路連線或 Apps Script 部署設定！');
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = `<i class="ph ph-paper-plane-tilt"></i> 儲存並同步至試算表`;
